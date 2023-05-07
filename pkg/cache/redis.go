@@ -66,7 +66,7 @@ func NewRedisStore(size int, network, address, password, database string) *Redis
 					redis.DialPassword(password),
 				)
 				if err != nil {
-					util.Log().Warning("无法创建Redis连接：%s", err)
+					util.Log().Warning("Failed to create Redis connection: %s", err)
 					return nil, err
 				}
 				return c, nil
@@ -214,4 +214,14 @@ func (store *RedisStore) DeleteAll() error {
 	_, err := rc.Do("FLUSHDB")
 
 	return err
+}
+
+// Persist Dummy implementation
+func (store *RedisStore) Persist(path string) error {
+	return nil
+}
+
+// Restore dummy implementation
+func (store *RedisStore) Restore(path string) error {
+	return nil
 }
