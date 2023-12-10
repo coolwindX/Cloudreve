@@ -25,7 +25,7 @@ func TestGetPolicyByID(t *testing.T) {
 		asserts.NoError(err)
 		asserts.NoError(mock.ExpectationsWereMet())
 		asserts.Equal("默认存储策略", policy.Name)
-		asserts.Equal("123", policy.OptionsSerialized.OdRedirect)
+		asserts.Equal("123", policy.OptionsSerialized.OauthRedirect)
 
 		rows = sqlmock.NewRows([]string{"name", "type", "options"})
 		mock.ExpectQuery("^SELECT(.+)").WillReturnRows(rows)
@@ -39,7 +39,7 @@ func TestGetPolicyByID(t *testing.T) {
 		policy, err := GetPolicyByID(uint(22))
 		asserts.NoError(err)
 		asserts.Equal("默认存储策略", policy.Name)
-		asserts.Equal("123", policy.OptionsSerialized.OdRedirect)
+		asserts.Equal("123", policy.OptionsSerialized.OauthRedirect)
 
 	}
 
@@ -50,7 +50,7 @@ func TestPolicy_BeforeSave(t *testing.T) {
 
 	testPolicy := Policy{
 		OptionsSerialized: PolicyOption{
-			OdRedirect: "123",
+			OauthRedirect: "123",
 		},
 	}
 	expected, _ := json.Marshal(testPolicy.OptionsSerialized)
@@ -133,6 +133,12 @@ func TestPolicy_GenerateFileName(t *testing.T) {
 
 		testPolicy.FileNameRule = "123{date}ss{datetime}"
 		asserts.Len(testPolicy.GenerateFileName(1, "123.txt"), 27)
+
+		testPolicy.FileNameRule = "{originname_without_ext}"
+		asserts.Len(testPolicy.GenerateFileName(1, "123.txt"), 3)
+
+		testPolicy.FileNameRule = "{originname_without_ext}_{randomkey8}{ext}"
+		asserts.Len(testPolicy.GenerateFileName(1, "123.txt"), 16)
 
 		// 支持{originname}的策略
 		testPolicy.Type = "local"

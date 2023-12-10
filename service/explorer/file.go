@@ -227,6 +227,16 @@ func (service *FileIDService) CreateDocPreviewSession(ctx context.Context, c *gi
 		return serializer.Err(serializer.CodeNotSet, err.Error(), err)
 	}
 
+	// For newer version of Cloudreve - Local Policy
+	// When do not use a cdn, the downloadURL withouts hosts, like "/api/v3/file/download/xxx"
+	if strings.HasPrefix(downloadURL, "/") {
+		downloadURI, err := url.Parse(downloadURL)
+		if err != nil {
+			return serializer.Err(serializer.CodeNotSet, err.Error(), err)
+		}
+		downloadURL = model.GetSiteURL().ResolveReference(downloadURI).String()
+	}
+
 	var resp serializer.DocPreviewSession
 
 	// Use WOPI preview if available
@@ -241,7 +251,7 @@ func (service *FileIDService) CreateDocPreviewSession(ctx context.Context, c *gi
 			action = wopi.ActionEdit
 		}
 
-		session, err := wopi.Default.NewSession(fs.User, &fs.FileTarget[0], action)
+		session, err := wopi.Default.NewSession(fs.FileTarget[0].UserID, &fs.FileTarget[0], action)
 		if err != nil {
 			return serializer.Err(serializer.CodeInternalSetting, "Failed to create WOPI session", err)
 		}
@@ -408,7 +418,7 @@ func (service *FileIDService) PutContent(ctx context.Context, c *gin.Context) se
 	}
 
 	fileData := fsctx.FileStream{
-		MIMEType: c.Request.Header.Get("Content-Type"),
+		MimeType: c.Request.Header.Get("Content-Type"),
 		File:     c.Request.Body,
 		Size:     fileSize,
 		Mode:     fsctx.Overwrite,

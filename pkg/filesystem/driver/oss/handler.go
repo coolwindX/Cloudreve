@@ -194,14 +194,7 @@ func (handler *Driver) Get(ctx context.Context, path string) (response.RSCloser,
 	ctx = context.WithValue(ctx, fsctx.ForceUsePublicEndpointCtx, false)
 
 	// 获取文件源地址
-	downloadURL, err := handler.Source(
-		ctx,
-		path,
-		url.URL{},
-		int64(model.GetIntSetting("preview_timeout", 60)),
-		false,
-		0,
-	)
+	downloadURL, err := handler.Source(ctx, path, int64(model.GetIntSetting("preview_timeout", 60)), false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +312,9 @@ func (handler *Driver) Thumb(ctx context.Context, file *model.File) (*response.C
 		return nil, errors.New("failed to get thumbnail size")
 	}
 
-	thumbParam := fmt.Sprintf("image/resize,m_lfit,h_%d,w_%d", thumbSize[1], thumbSize[0])
+	thumbEncodeQuality := model.GetIntSetting("thumb_encode_quality", 85)
+
+	thumbParam := fmt.Sprintf("image/resize,m_lfit,h_%d,w_%d/quality,q_%d", thumbSize[1], thumbSize[0], thumbEncodeQuality)
 	ctx = context.WithValue(ctx, fsctx.ThumbSizeCtx, thumbParam)
 	thumbOption := []oss.Option{oss.Process(thumbParam)}
 	thumbURL, err := handler.signSourceURL(
@@ -339,14 +334,7 @@ func (handler *Driver) Thumb(ctx context.Context, file *model.File) (*response.C
 }
 
 // Source 获取外链URL
-func (handler *Driver) Source(
-	ctx context.Context,
-	path string,
-	baseURL url.URL,
-	ttl int64,
-	isDownload bool,
-	speed int,
-) (string, error) {
+func (handler *Driver) Source(ctx context.Context, path string, ttl int64, isDownload bool, speed int) (string, error) {
 	// 初始化客户端
 	usePublicEndpoint := true
 	if forceUsePublicEndpoint, ok := ctx.Value(fsctx.ForceUsePublicEndpointCtx).(bool); ok {
@@ -447,6 +435,7 @@ func (handler *Driver) Token(ctx context.Context, ttl int64, uploadSession *seri
 	options := []oss.Option{
 		oss.Expires(time.Now().Add(time.Duration(ttl) * time.Second)),
 		oss.ForbidOverWrite(true),
+		oss.ContentType(fileInfo.DetectMimeType()),
 	}
 	imur, err := handler.bucket.InitiateMultipartUpload(fileInfo.SavePath, options...)
 	if err != nil {
